@@ -2,61 +2,25 @@
 # SPDX-License-Identifier: MIT
 ---
 name: 'terald-action'
-description: 'Check the presence of copyright notices in all text files'
+description: 'Report failed and recovered CI builds to a Telegram chat'
 branding:
-  icon: alert-triangle
-  color: orange
+  icon: send
+  color: blue
 runs:
-  using: 'node20'
-  main: 'src/copyrights.js'
+  using: 'node24'
+  main: 'src/terald.js'
 inputs:
-  license:
-    description: 'The file with a license'
+  token:
+    description: 'The token of the Telegram bot'
     required: true
-    default: LICENSE.txt
-  globs:
-    description: 'Globs to check'
+  chat:
+    description: 'The ID of the Telegram chat to post messages to'
     required: true
-    default: >-
-      **/*.asm
-      **/*.bib
-      **/*.cls
-      **/*.cpp
-      **/*.css
-      **/*.dtx
-      **/*.g4
-      **/*.groovy
-      **/*.h
-      **/*.html
-      **/*.ini
-      **/*.ins
-      **/*.java
-      **/*.js
-      **/*.lua
-      **/*.php
-      **/*.pl
-      **/*.properties
-      **/*.py
-      **/*.rb
-      **/*.rs
-      **/*.scss
-      **/*.sh
-      **/*.tex
-      **/*.toml
-      **/*.ts
-      **/*.xhtml
-      **/*.xml
-      **/*.xsd
-      **/*.xsl
-      **/*.yaml
-      **/*.yml
-      Dockerfile
-      Makefile
-      Rakefile
-  ignore:
-    description: 'Globs to exclude'
+  github-token:
+    description: 'The GitHub token that can read workflow runs'
     required: false
-    default: >-
-      target/**
-      node_modules/**
-      .git/**
+    default: ${{ github.token }}
+  telegram:
+    description: 'The URL of the Telegram Bot API server'
+    required: false
+    default: https://api.telegram.org

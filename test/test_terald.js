@@ -3,56 +3,127 @@
  * SPDX-License-Identifier: MIT
  */
 
-const os = require('os');
+const { assertThat, containsString, hasItem, is, not } = require('hamjest');
+const Fake = require('./fake');
 const path = require('path');
-const assert = require('assert');
-const { spawnSync } = require('child_process');
-const fs = require('fs');
+const { spawn } = require('child_process');
 
-runSync = (env) => {
-  const ret = spawnSync(
-    'node', [path.resolve('./src/copyrights.js')],
+const random = () => Math.floor(Math.random() * 1000000) + 1000;
+
+const launch = (url, env) => new Promise((resolve) => {
+  const proc = spawn(
+    'node',
+    [path.resolve(__dirname, '../src/terald.js')],
     {
-      encoding : 'utf8',
-      env: { ...process.env, ...env }
+      env: {
+        ...process.env,
+        'GITHUB_API_URL': url,
+        'GITHUB_SERVER_URL': 'https://github.example',
+        'INPUT_CHAT': '-1009',
+        'INPUT_GITHUB-TOKEN': 'ghs_abc',
+        'INPUT_TELEGRAM': url,
+        'INPUT_TOKEN': 'tg',
+        ...env
+      },
+      timeout: 10000
     }
   );
-  return ret.stdout;
-}
-
-describe('copyrights', () => {
-  it('finds no errors', (done) => {
-    const stdout = runSync({});
-    assert(stdout.includes('Errors not found'), stdout);
-    done();
+  let stdout = '';
+  proc.stdout.on('data', (chunk) => {
+    stdout += chunk;
   });
+  proc.on('close', (code) => resolve({ code, stdout }));
+});
 
-  it('finds errors', (done) => {
-    fs.mkdtemp(path.join(os.tmpdir(), 'copyrights-'), (err, folder) => {
-      if (err) {
-        throw err;
-      }
-      fs.writeFileSync(path.resolve(folder, 'LICENSE.txt'), 'Copyright 2024-2025');
-      fs.writeFileSync(path.resolve(folder, '.hello.js'), 'no copyright');
-      const stdout = runSync({'GITHUB_WORKSPACE': folder});
-      assert(stdout.includes('Errors: '), stdout);
-      done();
-    });
+it('announces the failure of the build', async () => {
+  const id = random();
+  const fake = new Fake({
+    '/bottg/sendMessage': { 'ok': true },
+    [`/repos/ab/c${id}/actions/runs/${id}/jobs?per_page=100`]: {
+      'jobs': [{ 'conclusion': 'failure', 'steps': [] }]
+    },
+    [`/repos/ab/c${id}/actions/runs/${id}`]: { 'run_started_at': new Date().toISOString() }
   });
+  await launch(await fake.start(), {
+    'GITHUB_REPOSITORY': `ab/c${id}`,
+    'GITHUB_RUN_ID': `${id}`,
+    'GITHUB_WORKFLOW': 'mvn'
+  });
+  await fake.stop();
+  assertThat(
+    'The failure was not announced',
+    JSON.parse(fake.hits().find((hit) => hit.path === '/bottg/sendMessage').body).text,
+    containsString(
+      [
+        `\`mvn\` workflow of \`ab/c${id}\``,
+        `just [failed](https://github.example/ab/c${id}/actions/runs/${id})`
+      ].join(' ')
+    )
+  );
+});
 
-  it('ignores directories', (done) => {
-    fs.mkdtemp(path.join(os.tmpdir(), 'copyrights-'), (err, folder) => {
-      if (err) {
-        throw err;
-      }
-      fs.writeFileSync(path.resolve(folder, 'LICENSE.txt'), 'Copyright 2024-2025');
-      fs.mkdirSync(path.resolve(folder, 'subdir'));
-      fs.writeFileSync(path.resolve(folder, 'file.js'), 'Copyright 2024-2025');
-      const stdout = runSync({'GITHUB_WORKSPACE': folder, 'INPUT_GLOBS': '**'});
-      assert(stdout.includes('Errors not found'), stdout);
-      assert(stdout.includes('OK: file.js'), stdout);
-      assert(!stdout.includes('subdir'), stdout);
-      done();
-    });
+it('announces the recovery of the build', async () => {
+  const id = random();
+  const fake = new Fake({
+    '/bottg/sendMessage': { 'ok': true },
+    [`/repos/x/y${id}/actions/runs/${id}/jobs?per_page=100`]: {
+      'jobs': [{ 'conclusion': 'success', 'steps': [] }]
+    },
+    [`/repos/x/y${id}/actions/runs/${id}`]: {
+      'head_branch': 'master',
+      'run_started_at': new Date().toISOString(),
+      'workflow_id': 42
+    },
+    [`/repos/x/y${id}/actions/workflows/42/runs?branch=master&per_page=100`]: {
+      'workflow_runs': [{ 'conclusion': 'failure', id: id - 1 }]
+    }
   });
+  await launch(await fake.start(), {
+    'GITHUB_REPOSITORY': `x/y${id}`,
+    'GITHUB_RUN_ID': `${id}`,
+    'GITHUB_WORKFLOW': 'make'
+  });
+  await fake.stop();
+  assertThat(
+    'The recovery was not announced',
+    JSON.parse(fake.hits().find((hit) => hit.path === '/bottg/sendMessage').body).text,
+    containsString('just [recovered]')
+  );
+});
+
+it('stays silent when the build is stable', async () => {
+  const id = random();
+  const fake = new Fake({
+    '/bottg/sendMessage': { 'ok': true },
+    [`/repos/m/n${id}/actions/runs/${id}/jobs?per_page=100`]: {
+      'jobs': [{ 'conclusion': 'success', 'steps': [] }]
+    },
+    [`/repos/m/n${id}/actions/runs/${id}`]: { 'head_branch': 'dev', 'workflow_id': 7 },
+    [`/repos/m/n${id}/actions/workflows/7/runs?branch=dev&per_page=100`]: {
+      'workflow_runs': [{ 'conclusion': 'success', id: id - 1 }]
+    }
+  });
+  await launch(await fake.start(), {
+    'GITHUB_REPOSITORY': `m/n${id}`,
+    'GITHUB_RUN_ID': `${id}`,
+    'GITHUB_WORKFLOW': 'ci'
+  });
+  await fake.stop();
+  assertThat(
+    'The stable build was announced',
+    fake.hits().map((hit) => hit.path),
+    not(hasItem('/bottg/sendMessage'))
+  );
+});
+
+it('fails when the chat is not given', async () => {
+  const id = random();
+  const fake = new Fake({});
+  const { code } = await launch(await fake.start(), {
+    'GITHUB_REPOSITORY': `e/f${id}`,
+    'GITHUB_RUN_ID': `${id}`,
+    'INPUT_CHAT': ''
+  });
+  await fake.stop();
+  assertThat('The missing chat was tolerated', code, is(1));
 });

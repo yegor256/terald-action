@@ -13,7 +13,7 @@ module.exports = [
     ...configs.all,
     files: ['**/*.js'],
     languageOptions: {
-      ecmaVersion: 2019,
+      ecmaVersion: 2022,
       sourceType: 'module'
     },
     rules: {

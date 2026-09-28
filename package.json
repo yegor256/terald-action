@@ -1,32 +1,25 @@
 {
   "author": "Yegor Bugayenko <yegor256@gmail.com> (https://www.yegor256.com/)",
-  "bin": {
-    "copyrights": "./src/copyrights.js"
-  },
-  "dependencies": {
-    "@actions/core": "2.0.3",
-    "glob": "13.0.0",
-    "node": "25.5.0"
-  },
-  "description": "A GitHub Action that checks the presence of copyright notices in all text files",
+  "description": "A GitHub Action that reports failed and recovered CI builds to Telegram",
   "devDependencies": {
     "@eslint/js": "^9.27.0",
     "eslint": "9.39.2",
+    "hamjest": "4.1.1",
     "mocha": "11.7.5"
   },
   "engines": {
-    "node": ">6.0",
+    "node": ">20.0",
     "npm": ">8.0"
   },
   "homepage": "https://github.com/yegor256/terald-action",
   "keywords": [
-    "cli",
-    "command",
+    "ci",
     "github",
-    "console"
+    "telegram",
+    "notification"
   ],
   "license": "MIT",
-  "main": "copyrights",
+  "main": "src/terald.js",
   "name": "terald-action",
   "os": [
     "darwin",
