@@ -155,3 +155,68 @@ it('denies recovery when the run itself failed', async () => {
   await fake.stop();
   assertThat('The failed run was reported as recovered', recovered, is(false));
 });
+
+it('counts consecutive failures before the run', async () => {
+  const id = random();
+  const flow = random();
+  const fake = new Fake({
+    [`/repos/g/h${id}/actions/runs/${id}`]: { 'head_branch': 'trunk', 'workflow_id': flow },
+    [`/repos/g/h${id}/actions/workflows/${flow}/runs?branch=trunk&per_page=100`]: {
+      'workflow_runs': [
+        { 'conclusion': 'failure', 'id': id + 2 },
+        { 'conclusion': null, id },
+        { 'conclusion': 'failure', 'id': id - 1 },
+        { 'conclusion': 'cancelled', 'id': id - 4 },
+        { 'conclusion': 'failure', 'id': id - 6 },
+        { 'conclusion': 'failure', 'id': id - 8 },
+        { 'conclusion': 'success', 'id': id - 11 },
+        { 'conclusion': 'failure', 'id': id - 13 }
+      ]
+    }
+  });
+  const failures = await new Run(new Repo(await fake.start(), `g/h${id}`, 'u7'), id).
+    failures();
+  await fake.stop();
+  assertThat('The consecutive failures were miscounted', failures, is(3));
+});
+
+it('counts no failures when the previous run succeeded', async () => {
+  const id = random();
+  const flow = random();
+  const fake = new Fake({
+    [`/repos/s/v${id}/actions/runs/${id}`]: { 'head_branch': 'rel', 'workflow_id': flow },
+    [`/repos/s/v${id}/actions/workflows/${flow}/runs?branch=rel&per_page=100`]: {
+      'workflow_runs': [
+        { 'conclusion': 'success', 'id': id - 2 },
+        { 'conclusion': 'failure', 'id': id - 3 }
+      ]
+    }
+  });
+  const failures = await new Run(new Repo(await fake.start(), `s/v${id}`, 'b3'), id).
+    failures();
+  await fake.stop();
+  assertThat('The failures were counted after a success', failures, is(0));
+});
+
+it('finds the start of the earliest consecutive failure', async () => {
+  const id = random();
+  const flow = random();
+  const fake = new Fake({
+    [`/repos/c/l${id}/actions/runs/${id}`]: { 'head_branch': 'b7', 'workflow_id': flow },
+    [`/repos/c/l${id}/actions/workflows/${flow}/runs?branch=b7&per_page=100`]: {
+      'workflow_runs': [
+        { 'conclusion': 'failure', 'id': id - 2, 'run_started_at': '2026-03-17T08:41:09Z' },
+        { 'conclusion': 'cancelled', 'id': id - 3, 'run_started_at': '2026-03-16T11:02:55Z' },
+        { 'conclusion': 'failure', 'id': id - 7, 'run_started_at': '2026-03-14T23:19:37Z' },
+        { 'conclusion': 'success', 'id': id - 9, 'run_started_at': '2026-03-11T04:12:48Z' }
+      ]
+    }
+  });
+  const since = await new Run(new Repo(await fake.start(), `c/l${id}`, 'n2'), id).since();
+  await fake.stop();
+  assertThat(
+    'The start of the failures was not found',
+    since.toISOString(),
+    is('2026-03-14T23:19:37.000Z')
+  );
+});

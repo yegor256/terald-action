@@ -75,7 +75,9 @@ it('announces the recovery of the build', async () => {
       'workflow_id': 42
     },
     [`/repos/x/y${id}/actions/workflows/42/runs?branch=master&per_page=100`]: {
-      'workflow_runs': [{ 'conclusion': 'failure', id: id - 1 }]
+      'workflow_runs': [
+        { 'conclusion': 'failure', id: id - 1, 'run_started_at': '2026-05-07T10:00:00Z' }
+      ]
     }
   });
   await launch(await fake.start(), {
@@ -88,6 +90,39 @@ it('announces the recovery of the build', async () => {
     'The recovery was not announced',
     JSON.parse(fake.hits().find((hit) => hit.path === '/bottg/sendMessage').body).text,
     containsString('just [recovered]')
+  );
+});
+
+it('announces the number of failures before the recovery', async () => {
+  const id = random();
+  const fake = new Fake({
+    '/bottg/sendMessage': { 'ok': true },
+    [`/repos/j/k${id}/actions/runs/${id}/jobs?per_page=100`]: {
+      'jobs': [{ 'conclusion': 'success', 'steps': [] }]
+    },
+    [`/repos/j/k${id}/actions/runs/${id}`]: {
+      'head_branch': 'main',
+      'run_started_at': new Date().toISOString(),
+      'workflow_id': 19
+    },
+    [`/repos/j/k${id}/actions/workflows/19/runs?branch=main&per_page=100`]: {
+      'workflow_runs': [
+        { 'conclusion': 'failure', id: id - 1, 'run_started_at': '2026-12-23T17:05:31Z' },
+        { 'conclusion': 'failure', id: id - 4, 'run_started_at': '2026-12-22T09:48:14Z' },
+        { 'conclusion': 'success', id: id - 5, 'run_started_at': '2026-12-19T13:27:02Z' }
+      ]
+    }
+  });
+  await launch(await fake.start(), {
+    'GITHUB_REPOSITORY': `j/k${id}`,
+    'GITHUB_RUN_ID': `${id}`,
+    'GITHUB_WORKFLOW': 'deep'
+  });
+  await fake.stop();
+  assertThat(
+    'The number of failures was not announced',
+    JSON.parse(fake.hits().find((hit) => hit.path === '/bottg/sendMessage').body).text,
+    containsString('s, after 2 failures since 22-Dec-2026')
   );
 });
 
