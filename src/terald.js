@@ -30,6 +30,13 @@ const failures = (count) => {
   return `${count} failures`;
 };
 
+const duration = (seconds) => {
+  if (seconds > 60) {
+    return `${Math.round(seconds / 60)}min`;
+  }
+  return `${seconds}s`;
+};
+
 const log = (line) => process.stdout.write(`${line}\n`);
 
 (async () => {
@@ -45,7 +52,7 @@ const log = (line) => process.stdout.write(`${line}\n`);
       [
         `${emoji} The \`${process.env.GITHUB_WORKFLOW}\` workflow of \`${repo}\``,
         `just [${verb}](${process.env.GITHUB_SERVER_URL}/${repo}/actions/runs/${id})`,
-        `in ${await run.seconds()}s${tail}`
+        `in ${duration(await run.seconds())}${tail}`
       ].join(' ')
     );
     log(`The build of ${repo} ${verb}, and Telegram was told about it`);

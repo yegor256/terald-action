@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-const { assertThat, containsString, hasItem, is, not } = require('hamjest');
+const { assertThat, containsString, hasItem, is, matchesPattern, not } = require('hamjest');
 const Fake = require('./fake');
 const path = require('path');
 const { spawn } = require('child_process');
@@ -123,6 +123,55 @@ it('announces the number of failures before the recovery', async () => {
     'The number of failures was not announced',
     JSON.parse(fake.hits().find((hit) => hit.path === '/bottg/sendMessage').body).text,
     containsString('s, after 2 failures since 22-Dec-2026')
+  );
+});
+
+it('announces the duration in seconds when it is short', async () => {
+  const id = random();
+  const fake = new Fake({
+    '/bottg/sendMessage': { 'ok': true },
+    [`/repos/u/i${id}/actions/runs/${id}/jobs?per_page=100`]: {
+      'jobs': [{ 'conclusion': 'failure', 'steps': [] }]
+    },
+    [`/repos/u/i${id}/actions/runs/${id}`]: {
+      'run_started_at': new Date(Date.now() - 37000).toISOString()
+    }
+  });
+  await launch(await fake.start(), {
+    'GITHUB_REPOSITORY': `u/i${id}`,
+    'GITHUB_RUN_ID': `${id}`,
+    'GITHUB_WORKFLOW': 'lint'
+  });
+  await fake.stop();
+  assertThat(
+    'The short duration was not announced in seconds',
+    JSON.parse(fake.hits().find((hit) => hit.path === '/bottg/sendMessage').body).text,
+    matchesPattern(/ in 3[789]s$/u)
+  );
+});
+
+it('announces the duration in minutes when it is long', async () => {
+  const id = random();
+  const minutes = (random() % 500) + 2;
+  const fake = new Fake({
+    '/bottg/sendMessage': { 'ok': true },
+    [`/repos/o/p${id}/actions/runs/${id}/jobs?per_page=100`]: {
+      'jobs': [{ 'conclusion': 'failure', 'steps': [] }]
+    },
+    [`/repos/o/p${id}/actions/runs/${id}`]: {
+      'run_started_at': new Date(Date.now() - (minutes * 60000) - 7000).toISOString()
+    }
+  });
+  await launch(await fake.start(), {
+    'GITHUB_REPOSITORY': `o/p${id}`,
+    'GITHUB_RUN_ID': `${id}`,
+    'GITHUB_WORKFLOW': 'build'
+  });
+  await fake.stop();
+  assertThat(
+    'The long duration was not announced in minutes',
+    JSON.parse(fake.hits().find((hit) => hit.path === '/bottg/sendMessage').body).text,
+    containsString(` in ${minutes}min`)
   );
 });
 
