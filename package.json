@@ -3,7 +3,7 @@
   "description": "A GitHub Action that reports failed and recovered CI builds to Telegram",
   "devDependencies": {
     "@eslint/js": "^9.27.0",
-    "eslint": "9.39.2",
+    "eslint": "9.39.5",
     "hamjest": "4.1.1",
     "mocha": "11.7.5"
   },
