@@ -1,0 +1,62 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024-2026 Yegor Bugayenko
+# SPDX-License-Identifier: MIT
+---
+name: 'terald-action'
+description: 'Check the presence of copyright notices in all text files'
+branding:
+  icon: alert-triangle
+  color: orange
+runs:
+  using: 'node20'
+  main: 'src/copyrights.js'
+inputs:
+  license:
+    description: 'The file with a license'
+    required: true
+    default: LICENSE.txt
+  globs:
+    description: 'Globs to check'
+    required: true
+    default: >-
+      **/*.asm
+      **/*.bib
+      **/*.cls
+      **/*.cpp
+      **/*.css
+      **/*.dtx
+      **/*.g4
+      **/*.groovy
+      **/*.h
+      **/*.html
+      **/*.ini
+      **/*.ins
+      **/*.java
+      **/*.js
+      **/*.lua
+      **/*.php
+      **/*.pl
+      **/*.properties
+      **/*.py
+      **/*.rb
+      **/*.rs
+      **/*.scss
+      **/*.sh
+      **/*.tex
+      **/*.toml
+      **/*.ts
+      **/*.xhtml
+      **/*.xml
+      **/*.xsd
+      **/*.xsl
+      **/*.yaml
+      **/*.yml
+      Dockerfile
+      Makefile
+      Rakefile
+  ignore:
+    description: 'Globs to exclude'
+    required: false
+    default: >-
+      target/**
+      node_modules/**
+      .git/**
