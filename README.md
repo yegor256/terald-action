@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v6
       - run: make
       - if: always()
-        uses: yegor256/terald-action@0.0.0
+        uses: yegor256/terald-action@0.1.0
         with:
           token: ${{ secrets.TELEGRAM_TOKEN }}
           chat: -1009999999999
@@ -52,7 +52,7 @@ jobs:
     permissions:
       actions: read
     steps:
-      - uses: yegor256/terald-action@0.0.0
+      - uses: yegor256/terald-action@0.1.0
         with:
           token: ${{ secrets.TELEGRAM_TOKEN }}
           chat: -1009999999999
