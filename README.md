@@ -31,6 +31,7 @@ Otherwise, it stays silent.
 The `token` is the token of a Telegram bot, which you get from
   [@BotFather](https://t.me/BotFather).
 The `chat` is the ID of the chat where the bot is a member.
+Get it, as [explained](https://stackoverflow.com/questions/32423837).
 
 The action reads the runs of the workflow through the GitHub API,
   that's why the job needs the `actions: read` permission.
