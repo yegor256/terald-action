@@ -20,7 +20,7 @@ jobs:
         uses: yegor256/terald-action@0.1.0
         with:
           token: ${{ secrets.TELEGRAM_TOKEN }}
-          chat: -1009999999999
+          chat: ${{ secrets.TELEGRAM_CHAT }}
 ```
 
 When your build fails, it sends a message to the Telegram chat.
@@ -55,7 +55,7 @@ jobs:
       - uses: yegor256/terald-action@0.1.0
         with:
           token: ${{ secrets.TELEGRAM_TOKEN }}
-          chat: -1009999999999
+          chat: ${{ secrets.TELEGRAM_CHAT }}
 ```
 
 ## How to Contribute
