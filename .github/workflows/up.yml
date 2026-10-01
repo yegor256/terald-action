@@ -13,6 +13,9 @@ jobs:
   up:
     timeout-minutes: 15
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v7
       - run: |-
