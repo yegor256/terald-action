@@ -14,7 +14,7 @@ jobs:
       actions: read
       contents: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: make
       - if: always()
         uses: yegor256/terald-action@0.1.0
